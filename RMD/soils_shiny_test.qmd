@@ -1,0 +1,62 @@
+---
+title: "FLOURISH Data Summary"
+format:
+    html:
+     embed-resources: true
+server: shiny
+---
+
+```{r Setup, echo=FALSE, include=F}
+
+library(shiny)
+library(tidyverse)
+library(lubridate)
+library(here)
+library(plotly)
+
+FLOURISH_MASTER <- read_csv(file ='R:\\_04_Project_Data\\R\\FLOURISH\\outputs\\FLOURISH_MASTER.csv' )
+
+ 
+```
+
+## Here's your data!
+
+Thank you for participating in the FLOURISH project. Below you will find the Soil Moisture and Soil Temperature data from the sensors in your cover crop field. Just select your last name from the dropdown. As the project continues we will be working on finding the best way to get your data to you, so please don't hesitate to offer up questions or comments on how it is displayed. Feel free to reach out to Gerrit (gerritb\@palousecd.org) or Ryan (ryanb\@palousecd.org) with any questions or comments!
+
+## Soil Moisture in your field at 1 and 3 feet
+
+```{r Soil M graph, echo = FALSE, warning=FALSE}
+
+uiOutput("prod_name")
+
+plotlyOutput("soilPlot")
+        
+                    
+```
+
+## Soil Temperature in your field at 1 and 3 feet
+
+```{r}
+#| context: server
+output$prod_name <- renderUI({
+      selectInput("last_name","Select your last name from the dropdown",
+                  unique(FLOURISH_MASTER$producer_name))})
+
+    output$soilPlot <- renderPlotly({
+      SoilMGraph <- FLOURISH_MASTER %>%
+        subset(producer_name == input$last_name) %>% 
+        subset(Param == 'SoilM') %>% 
+        mutate(Depth = as.factor(Depth)) %>% 
+        ggplot(aes(x = datetime, y = Value, color = Depth, group = Depth))+
+        geom_line()+ #stat and fun.y are to set up stat summary so points can be connected despite being discrete data
+        scale_color_manual(values=c("#E69F00", "#56B4E9"))+
+        labs(x = "",
+             y = 'Soil Moisture (%)',
+             color = "Depth (in)")+
+        theme_minimal()+
+        scale_x_datetime(date_labels = "%m/%d/%y", date_breaks = "weeks")
+      
+      ggplotly(SoilMGraph)})
+
+
+```

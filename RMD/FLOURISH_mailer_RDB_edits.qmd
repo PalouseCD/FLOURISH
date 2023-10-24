@@ -1,0 +1,107 @@
+---
+title: "FLOURISH Data Summary"
+format:
+    html:
+     embed-resources: true
+editor: visual
+---
+
+```{r Setup, echo=FALSE, include=F}
+
+#enter producers name here to generate this document for only that producer
+field_name = "DOBFL-CC01"
+producer_name = "David"
+
+# code here will pull in file with all the FLOURISH data we have pulled out of WISKI. Then it  will sort by whatever fieldID we give it to isolate single producer data. Then it will use the field ID to populate the producers first name and a FIRST_DATE and LAST DATE.
+
+library(tidyverse)
+library(lubridate)
+library(here)
+library(plotly)
+
+FLOURISH_MASTER <- read_csv(file ='R:\\_04_Project_Data\\R\\FLOURISH\\outputs\\FLOURISH_MASTER.csv' ) %>% 
+  select(2:6)
+
+#subsets data by producer
+flourish_by_name <- subset(FLOURISH_MASTER, Site == field_name)
+  #mutate(Depth = case_when(Depth == 12 ~ 36,
+                            # Depth == 36 ~ 12))
+
+FIRST_DATE = date(first(flourish_by_name$datetime)) %>% 
+  format('%m/%d/%y')
+
+LAST_DATE = date(last(flourish_by_name$datetime)) %>% 
+  format('%m/%d/%y')
+
+ 
+```
+
+::: {layout-ncol="2"}
+![](R:/_06_Photos/PCD_LOGO.jpg)
+
+![](R:/_06_Photos/FLOURISH.png){#id .class width="100%"}
+:::
+
+## Here's your data!
+
+Hi `r producer_name`, here is a summary of the data from the soil moisture sensor in your cover crop field from `r FIRST_DATE` to `r LAST_DATE`. If your graphs have very different numbers at the start of the time period or odd horizontal jogs in data, disregard those. As the project continues we will be working on finding the best way to get your data to you, so please don't hesitate to offer up questions or comments on how it is displayed. Feel free to reach out to Gerrit (gerritb\@palousecd.org) or Ryan (ryanb\@palousecd.org) with any questions or comments!
+
+## Soil Moisture in your field at 1 and 3 feet
+
+```{r Soil M graph, echo = FALSE, warning=FALSE}
+
+# soil moisture graph
+SoilMGraph <- flourish_by_name %>%
+  subset(Param == 'SoilM') %>% 
+  arrange(datetime) %>% 
+  plot_ly(x=~datetime, 
+          y=~Value,
+          split = ~Depth,
+          type = 'scatter',
+          mode = 'lines')%>% 
+ layout(legend=list(title=list(text = '<b> Depth (in) </b>')),
+                      title = "Soil Moisture Data",
+                      plot_bgcolor='#e5ecf6',
+                      xaxis = list( 
+                        title = "Date",
+                        zerolinecolor = '#ffff', 
+                        zerolinewidth = 2,
+                        gridcolor = 'ffff'),
+                      yaxis = list( 
+                        title = "Soil Moisture (%)",
+                        zerolinecolor = '#ffff', 
+                        zerolinewidth = 2, 
+                        gridcolor = 'ffff') ) 
+SoilMGraph                       
+```
+
+## Soil Temperature in your field at 1 and 3 feet
+
+```{r Soil Tempgraph, echo=F, warning=FALSE}
+
+#soil temperature graph
+SoilTGraph <- flourish_by_name %>%
+  subset(Param == 'SoilT') %>%
+  mutate(Value = ((9/5)*Value + 32)) %>% 
+  arrange(datetime) %>% 
+  plot_ly( x=~datetime, 
+           y=~Value,
+           split = ~Depth,
+           type = 'scatter',
+           mode = 'lines')%>% 
+  layout(legend=list(title=list(text = '<b> Depth (in) </b>')),
+         title = "Soil Temperature Data",
+         plot_bgcolor='#e5ecf6',
+         xaxis = list( 
+           title = "Date",
+           zerolinecolor = '#ffff', 
+           zerolinewidth = 2,
+           gridcolor = 'ffff'),
+         yaxis = list( 
+           title = "Soil Temperature (°F)",
+           zerolinecolor = '#ffff', 
+           zerolinewidth = 2, 
+           gridcolor = 'ffff') ) 
+
+SoilTGraph
+```

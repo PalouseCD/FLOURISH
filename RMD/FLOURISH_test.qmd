@@ -1,0 +1,86 @@
+---
+title: "FLOURISH_test"
+format:
+  html:
+    page-layout: custom
+server: shiny
+---
+```{r Setup, echo=FALSE, include=F}
+
+#enter producers name here to generate this document for only that producer
+field_name = "ZAKFL-CC01"
+producer_name = "Sheryl"
+
+# code here will pull in file with all the FLOURISH data we have pulled out of WISKI. Then it  will sort by whatever fieldID we give it to isolate single producer data. Then it will use the field ID to populate the producers first name and a FIRST_DATE and LAST DATE.
+
+library(tidyverse)
+library(lubridate)
+library(here)
+library(plotly)
+library(shiny)
+
+# make a list of all your files
+data_files <- grep(list.files(here("data","from_WISKI")), pattern='.log', invert=TRUE, value=TRUE)
+
+
+# function to clean datafiles and pull info about them from their filenames
+FLOURISH_manager <- function(data){
+
+#pulling variables from file name
+Site<- sapply(strsplit(data,"_"), `[`, 1)
+Param <- sapply(strsplit(data,"_"), `[`, 2)
+Depth <- sapply(strsplit(data,"_"), `[`, 3) %>% 
+  str_remove('.csv')
+
+#bringing in data and formatting it
+test_data <- read_csv(file = paste0(here("data","from_WISKI","/"),data), skip = 15,locale=locale(encoding="latin1"), name_repair = 'check_unique') %>% 
+  mutate(datetime = mdy_hms(paste(Date, Time))) %>% 
+  select(5,3) %>% 
+  mutate(Site = Site,
+         Param = Param,
+         Depth = Depth) %>% 
+  dplyr::rename(Value = 2) %>%
+  mutate(Value = as.double(Value)) %>% 
+  select(1,3,4,5,2)
+} 
+
+# applying function to list of files and combining them all into one dataframe
+FLOURISH_MASTER <- lapply(data_files,FLOURISH_manager) %>% 
+  bind_rows()
+
+#subsets data by producer
+flourish_by_name <- subset(FLOURISH_MASTER, Site == field_name)
+
+FIRST_DATE = date(first(flourish_by_name$datetime)) %>% 
+  format('%m/%d/%y')
+
+LAST_DATE = date(last(flourish_by_name$datetime)) %>% 
+  format('%m/%d/%y')
+
+ 
+```
+
+## Here's your data!
+
+View your data below by selecting your field name from the drop down. Your field name starts with the first three letters of your last name. Feel free to reach out to Gerrit (gerritb\@palousecd.org) or Ryan (ryanb\@palousecd.org) with any questions pertaining to your data!
+
+```{r}
+
+#| panel: sidebar
+vars <- setdiff(names(iris), "Species")
+selectInput('xcol', 'X Variable', vars)
+selectInput('ycol', 'Y Variable', vars, selected = vars[[2]])
+numericInput('clusters', 'Cluster count', 3, min = 1, max = 9)
+
+```
+
+```{r}
+#| context: server
+output$distPlot <- renderPlot({
+   x <- faithful[, 2]  # Old Faithful Geyser data
+   bins <- seq(min(x), max(x), length.out = input$bins + 1)
+   hist(x, breaks = bins, col = 'darkgray', border = 'white',
+        xlab = 'Waiting time to next eruption (in mins)',
+        main = 'Histogram of waiting times')
+})
+```
